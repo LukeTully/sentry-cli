@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
-use crate::api::Api;
+use crate::api::{Api, ProcessedEvent};
 use crate::config::Config;
 use crate::utils::formatting::Table;
 
@@ -37,6 +37,12 @@ pub fn make_command(command: Command) -> Command {
                 .value_parser(clap::value_parser!(usize))
                 .help("Maximum number of pages to fetch (100 events/page)."),
         )
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .action(ArgAction::SetTrue)
+                .help("Format outputs as JSON."),
+        )
 }
 
 pub fn execute(matches: &ArgMatches) -> Result<()> {
@@ -50,6 +56,12 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     let events = api
         .authenticated()?
         .list_organization_project_events(&org, &project, pages)?;
+
+    if matches.get_flag("json") {
+        serde_json::to_writer_pretty(&mut std::io::stdout(), &events)?;
+        println!();
+        return Ok(());
+    }
 
     let mut table = Table::new();
     let title_row = table.title_row().add("Event ID").add("Date").add("Title");
@@ -68,7 +80,8 @@ pub fn execute(matches: &ArgMatches) -> Result<()> {
     );
 
     if let Some(events) = events.get(..max_rows) {
-        for event in events {
+        for event_json in events {
+            let event: ProcessedEvent = serde_json::from_value(event_json.clone())?;
             let row = table.add_row();
             row.add(event.event_id)
                 .add(&event.date_created)

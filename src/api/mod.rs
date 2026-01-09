@@ -818,7 +818,7 @@ impl AuthenticatedApi<'_> {
         org: &str,
         project: &str,
         max_pages: usize,
-    ) -> ApiResult<Vec<ProcessedEvent>> {
+    ) -> ApiResult<Vec<serde_json::Value>> {
         let mut rv = vec![];
         let mut cursor = "".to_owned();
         let mut requests_no = 0;
@@ -842,7 +842,7 @@ impl AuthenticatedApi<'_> {
             }
 
             let pagination = resp.pagination();
-            rv.extend(resp.convert::<Vec<ProcessedEvent>>()?);
+            rv.extend(resp.convert::<Vec<serde_json::Value>>()?);
 
             if requests_no == max_pages {
                 break;
